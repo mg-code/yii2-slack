@@ -8,6 +8,8 @@ namespace understeam\slack;
 
 use Yii;
 use yii\base\InvalidConfigException;
+use yii\helpers\ArrayHelper;
+use yii\helpers\VarDumper;
 use yii\log\Logger;
 use yii\log\Target;
 use yii\web\Request;
@@ -22,6 +24,7 @@ class LogTarget extends Target
     public $sendLogs = false;
     public $channel = null;
     public $emoji = null;
+    protected $logFields = [];
 
     /**
      * @var \understeam\slack\Client|string
@@ -40,6 +43,11 @@ class LogTarget extends Target
         }
         if (!$this->slack instanceof Client) {
             throw new InvalidConfigException("LogTarget::slack must be either a Slack client instance or the application component ID of a Slack client.");
+        }
+
+        if ($this->logVars) {
+            $this->logFields = $this->logVars;
+            $this->logVars = [];
         }
     }
 
@@ -100,6 +108,16 @@ class LogTarget extends Target
                     'value' => $request->getAbsoluteUrl(),
                     'short' => true,
                 ];
+            }
+            if ($this->logFields) {
+                $context = ArrayHelper::filter($GLOBALS, $this->logFields);
+                foreach ($context as $key => $value) {
+                    $attachment['fields'][] = [
+                        'title' => $key,
+                        'value' => VarDumper::dumpAsString($value),
+                        'short' => false,
+                    ];
+                }
             }
             $attachments[] = $attachment;
         }
